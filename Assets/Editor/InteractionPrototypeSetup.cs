@@ -12,29 +12,30 @@ public static class InteractionPrototypeSetup
     public static void CreatePrototype()
     {
         EnsureFolder("Assets/ScriptableObjects"); EnsureFolder(Root); EnsureFolder("Assets/Scenes");
+        string scenePath = "Assets/Scenes/InteractionPrototype.unity";
+        if (File.Exists(scenePath) && !EditorUtility.DisplayDialog("Replace prototype scene?", "InteractionPrototype シーンを新しいクリック操作のサンプルで置き換えますか？", "置き換える", "キャンセル")) return;
         var sit = CreateDefinition("Sit.asset", "座る", "椅子でひと休みする", SimsMock.Interaction.InteractionKind.Sit, 2f, 1.35f, 1);
         var work = CreateDefinition("Work.asset", "作業する", "作業台で作業を進める", SimsMock.Interaction.InteractionKind.Work, 3f, 1.5f, 1);
         var tidy = CreateDefinition("Tidy.asset", "整える", "作業台を整頓する", SimsMock.Interaction.InteractionKind.Work, 1.5f, 1.5f, 1);
         var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
         RenderSettings.ambientLight = new Color(.55f, .58f, .62f);
         CreateLight();
-        var floor = GameObject.CreatePrimitive(PrimitiveType.Cube); floor.name = "Prototype Floor"; floor.transform.position = new Vector3(0, -.15f, 0); floor.transform.localScale = new Vector3(14, .3f, 14); Paint(floor, new Color(.28f,.34f,.29f));
+        var floor = GameObject.CreatePrimitive(PrimitiveType.Cube); floor.name = "Prototype Terrain"; floor.transform.position = new Vector3(0, -.15f, 0); floor.transform.localScale = new Vector3(14, .3f, 14); floor.AddComponent<GroundMoveTarget>(); Paint(floor, new Color(.28f,.34f,.29f));
         var player = GameObject.CreatePrimitive(PrimitiveType.Capsule); player.name = "Player"; player.transform.position = new Vector3(0, 1, -2); Paint(player, new Color(.25f,.55f,.95f));
-        var movement = player.AddComponent<LegacyMovementController>();
+        var movement = player.AddComponent<ClickMovementController>();
         var scanner = player.AddComponent<MockInteractionScanner>();
         var executor = player.AddComponent<InteractionExecutor>(); executor.Configure(player.transform, movement);
         CreateFurniture("Chair", new Vector3(-2, .55f, 1), new Vector3(1,1.1f,1), new Color(.55f,.3f,.18f), new List<InteractionDefinition>{sit});
         CreateFurniture("Workbench", new Vector3(2, .55f, 1), new Vector3(1.6f,1.1f,1), new Color(.65f,.46f,.25f), new List<InteractionDefinition>{work,tidy});
         var cameraObject = new GameObject("Main Camera"); cameraObject.tag = "MainCamera"; var camera = cameraObject.AddComponent<Camera>(); camera.fieldOfView = 55; cameraObject.AddComponent<AudioListener>(); var follow = cameraObject.AddComponent<FollowCamera>(); follow.Configure(player.transform);
-        var controllerObject = new GameObject("Interaction Prototype Controller"); var ui = controllerObject.AddComponent<InteractionPrototypeController>(); ui.Configure(player.transform, scanner, executor);
-        string scenePath = "Assets/Scenes/InteractionPrototype.unity";
+        var controllerObject = new GameObject("Interaction Prototype Controller"); var ui = controllerObject.AddComponent<InteractionPrototypeController>(); ui.Configure(player.transform, camera, scanner, executor);
         EditorSceneManager.SaveScene(scene, scenePath);
         var scenes = new List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
         if (!scenes.Exists(s => s.path == scenePath)) scenes.Add(new EditorBuildSettingsScene(scenePath, true));
         EditorBuildSettings.scenes = scenes.ToArray();
         AssetDatabase.SaveAssets(); AssetDatabase.Refresh();
         Selection.activeObject = AssetDatabase.LoadAssetAtPath<SceneAsset>(scenePath);
-        EditorUtility.DisplayDialog("Sims Mock", "InteractionPrototype シーンを作成しました。開いたシーンを Play して WASD / 矢印キーと E キーを試してください。", "OK");
+        EditorUtility.DisplayDialog("Sims Mock", "InteractionPrototype シーンを作成しました。Play して家具を左クリックし、地面を左クリックして操作を試してください。", "OK");
     }
     static InteractionDefinition CreateDefinition(string file, string title, string description, SimsMock.Interaction.InteractionKind kind, float duration, float distance, int value)
     {

@@ -22,7 +22,7 @@ namespace SimsMock.Interaction
         void Execute(InteractionDefinition definition, in InteractionContext context);
     }
 
-    public interface IInteractionScanner { IInteractable CurrentTarget { get; } void Scan(Transform origin, float range); }
+    public interface IInteractionScanner { IInteractable CurrentTarget { get; } void Select(IInteractable target); }
     public interface IMovementController { bool IsMoving { get; } void MoveTo(Vector3 destination, System.Action<bool> onArrived); void Stop(); }
-    public interface IInteractionExecutor { InteractionState State { get; } string StatusMessage { get; } void Request(IInteractable target, InteractionDefinition definition); void Cancel(); }
+    public interface IInteractionExecutor { InteractionState State { get; } string StatusMessage { get; } void Request(IInteractable target, InteractionDefinition definition); void RequestMove(Vector3 destination); void Cancel(); }
 }
