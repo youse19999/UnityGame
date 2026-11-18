@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
 using SimsMock.Interaction;
@@ -20,6 +22,14 @@ public sealed class InteractionPrototypeController : MonoBehaviour
     VisualElement uiRoot;
     Label selectedLabel;
     Label statusLabel;
+    VisualElement hudElement;
+    readonly List<PieButtonHit> pieButtonHits = new List<PieButtonHit>();
+
+    sealed class PieButtonHit
+    {
+        public Button Button;
+        public Action Activate;
+    }
     int lastScreenWidth;
     int lastScreenHeight;
 
@@ -65,7 +75,9 @@ public sealed class InteractionPrototypeController : MonoBehaviour
             if (executor.State == InteractionState.Moving || executor.State == InteractionState.Executing) executor.Cancel();
             if (menuOpen) { menuOpen = false; RefreshUI(); }
         }
-        if (executor.State == InteractionState.Executing || !Input.GetMouseButtonDown(0) || IsPointerOverUI()) return;
+        if (executor.State == InteractionState.Executing || !Input.GetMouseButtonDown(0)) return;
+        if (TryActivatePieButton(Input.mousePosition)) return;
+        if (IsPointerOverHud(Input.mousePosition)) return;
         if (viewCamera == null) viewCamera = Camera.main;
         if (viewCamera == null) return;
         Ray ray = viewCamera.ScreenPointToRay(Input.mousePosition);
@@ -102,18 +114,27 @@ public sealed class InteractionPrototypeController : MonoBehaviour
         menuOpen = false; scanner.Select(null); RefreshUI();
     }
 
-    static bool IsAlive(IInteractable target) { return target != null && (target as Object) != null; }
+    static bool IsAlive(IInteractable target) { return target != null && (target as UnityEngine.Object) != null; }
 
-    bool IsPointerOverUI()
+    bool IsPointerOverHud(Vector2 screenPosition)
     {
-        var hudPointer = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y);
-        if (new Rect(0, 0, 450, 150).Contains(hudPointer)) return true;
-        if (uiRoot == null || uiRoot.panel == null) return false;
+        if (uiRoot == null || uiRoot.panel == null || hudElement == null) return false;
+        Vector2 panelPosition = RuntimePanelUtils.ScreenToPanel(uiRoot.panel, screenPosition);
+        return hudElement.worldBound.Contains(panelPosition);
+    }
 
-        Vector2 panelPointer = RuntimePanelUtils.ScreenToPanel(uiRoot.panel, Input.mousePosition);
-        for (VisualElement picked = uiRoot.panel.Pick(panelPointer); picked != null; picked = picked.parent)
+    bool TryActivatePieButton(Vector2 screenPosition)
+    {
+        if (!menuOpen || uiRoot == null || uiRoot.panel == null) return false;
+        Vector2 panelPosition = RuntimePanelUtils.ScreenToPanel(uiRoot.panel, screenPosition);
+        for (int i = pieButtonHits.Count - 1; i >= 0; i--)
         {
-            if (picked is Button) return true;
+            var hit = pieButtonHits[i];
+            if (hit.Button != null && hit.Button.worldBound.Contains(panelPosition))
+            {
+                hit.Activate?.Invoke();
+                return true;
+            }
         }
         return false;
     }
@@ -128,6 +149,8 @@ public sealed class InteractionPrototypeController : MonoBehaviour
         if (uiRoot == null) return;
         lastScreenWidth = Screen.width;
         lastScreenHeight = Screen.height;
+        pieButtonHits.Clear();
+        hudElement = null;
         uiRoot.Clear();
         uiRoot.style.position = Position.Absolute;
         uiRoot.style.left = 0; uiRoot.style.top = 0; uiRoot.style.right = 0; uiRoot.style.bottom = 0;
@@ -141,6 +164,7 @@ public sealed class InteractionPrototypeController : MonoBehaviour
         hud.style.borderTopLeftRadius = 10; hud.style.borderTopRightRadius = 10;
         hud.style.borderBottomLeftRadius = 10; hud.style.borderBottomRightRadius = 10;
         hud.pickingMode = PickingMode.Position;
+        hudElement = hud;
         hud.Add(MakeLabel("Sims Mock Interaction Prototype", 18, true));
         hud.Add(MakeLabel("家具を左クリックして行動 / 地面を左クリックして移動", 13, false));
         selectedLabel = MakeLabel("選択中: なし", 14, false); hud.Add(selectedLabel);
@@ -256,7 +280,7 @@ public sealed class InteractionPrototypeController : MonoBehaviour
         button.style.borderBottomColor = new Color(.06f,.09f,.28f); button.style.borderLeftColor = new Color(.53f,.62f,1f);
         button.style.borderTopWidth = 1; button.style.borderLeftWidth = 1; button.style.borderRightWidth = 1; button.style.borderBottomWidth = 2;
         button.style.unityTextAlign = TextAnchor.MiddleCenter;
-        button.clicked += onClicked;
+        pieButtonHits.Add(new PieButtonHit { Button = button, Activate = onClicked });
         button.RegisterCallback<PointerEnterEvent>(_ =>
         {
             button.style.backgroundColor = new Color(.03f,.5f,.16f,1f);
