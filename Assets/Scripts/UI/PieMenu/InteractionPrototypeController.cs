@@ -20,6 +20,8 @@ public sealed class InteractionPrototypeController : MonoBehaviour
     VisualElement uiRoot;
     Label selectedLabel;
     Label statusLabel;
+    int lastScreenWidth;
+    int lastScreenHeight;
 
     void Awake()
     {
@@ -56,6 +58,7 @@ public sealed class InteractionPrototypeController : MonoBehaviour
             selectedLabel.text = "選択中: " + (IsAlive(scanner.CurrentTarget) ? scanner.CurrentTarget.DisplayName : "なし");
         if (statusLabel != null)
             statusLabel.text = "状態: " + executor.StatusMessage + "   (Esc: キャンセル)";
+        if (menuOpen && (lastScreenWidth != Screen.width || lastScreenHeight != Screen.height)) RefreshUI();
 
         if (Input.GetKeyDown(KeyCode.Escape))
         {
@@ -106,9 +109,8 @@ public sealed class InteractionPrototypeController : MonoBehaviour
         var pointer = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y);
         if (new Rect(0, 0, 450, 150).Contains(pointer)) return true;
         if (!menuOpen) return false;
-        int itemCount = moveMenu ? 1 : (IsAlive(menuTarget) ? menuTarget.GetAvailableInteractions(new InteractionContext(player, menuTarget)).Count : 0);
-        float height = itemCount * 48 + 68;
-        return new Rect((Screen.width - 320) * .5f, (Screen.height - height) * .5f, 320, height).Contains(pointer);
+        float diameter = GetPieDiameter();
+        return new Rect((Screen.width - diameter) * .5f, (Screen.height - diameter) * .5f, diameter, diameter).Contains(pointer);
     }
 
     void RefreshUI()
@@ -119,6 +121,8 @@ public sealed class InteractionPrototypeController : MonoBehaviour
     void BuildUI()
     {
         if (uiRoot == null) return;
+        lastScreenWidth = Screen.width;
+        lastScreenHeight = Screen.height;
         uiRoot.Clear();
         uiRoot.style.position = Position.Absolute;
         uiRoot.style.left = 0; uiRoot.style.top = 0; uiRoot.style.right = 0; uiRoot.style.bottom = 0;
@@ -146,44 +150,124 @@ public sealed class InteractionPrototypeController : MonoBehaviour
         overlay.style.alignItems = Align.Center;
         overlay.pickingMode = PickingMode.Ignore;
         var menu = new VisualElement();
-        menu.style.width = 320; menu.style.paddingLeft = 14; menu.style.paddingRight = 14;
-        menu.style.paddingTop = 12; menu.style.paddingBottom = 12;
-        menu.style.backgroundColor = new Color(0.08f, 0.11f, 0.16f, 0.97f);
-        menu.style.borderTopLeftRadius = 10; menu.style.borderTopRightRadius = 10;
-        menu.style.borderBottomLeftRadius = 10; menu.style.borderBottomRightRadius = 10;
-        menu.style.borderTopWidth = 1; menu.style.borderBottomWidth = 1;
-        menu.style.borderLeftWidth = 1; menu.style.borderRightWidth = 1;
-        menu.style.borderTopColor = new Color(.35f,.55f,.7f); menu.style.borderBottomColor = new Color(.35f,.55f,.7f);
-        menu.style.borderLeftColor = new Color(.35f,.55f,.7f); menu.style.borderRightColor = new Color(.35f,.55f,.7f);
-        menu.pickingMode = PickingMode.Position;
-        menu.Add(MakeLabel(moveMenu ? "地面の操作" : (IsAlive(menuTarget) ? menuTarget.DisplayName + " の行動" : "操作"), 18, true));
+        float diameter = GetPieDiameter();
+        menu.style.position = Position.Relative;
+        menu.style.width = diameter; menu.style.height = diameter;
+        menu.pickingMode = PickingMode.Ignore;
+
+        var ring = new VisualElement();
+        float ringDiameter = diameter * .78f;
+        ring.style.position = Position.Absolute;
+        ring.style.width = ringDiameter; ring.style.height = ringDiameter;
+        ring.style.left = (diameter - ringDiameter) * .5f; ring.style.top = (diameter - ringDiameter) * .5f;
+        ring.style.borderTopLeftRadius = ringDiameter * .5f; ring.style.borderTopRightRadius = ringDiameter * .5f;
+        ring.style.borderBottomLeftRadius = ringDiameter * .5f; ring.style.borderBottomRightRadius = ringDiameter * .5f;
+        ring.style.borderTopWidth = 1; ring.style.borderRightWidth = 1; ring.style.borderBottomWidth = 1; ring.style.borderLeftWidth = 1;
+        ring.style.borderTopColor = new Color(.35f,.48f,.78f,.65f); ring.style.borderRightColor = new Color(.35f,.48f,.78f,.65f);
+        ring.style.borderBottomColor = new Color(.35f,.48f,.78f,.65f); ring.style.borderLeftColor = new Color(.35f,.48f,.78f,.65f);
+        ring.pickingMode = PickingMode.Ignore;
+        menu.Add(ring);
+
+        var center = new VisualElement();
+        float centerSize = diameter * .28f;
+        center.style.position = Position.Absolute;
+        center.style.width = centerSize; center.style.height = centerSize;
+        center.style.left = (diameter - centerSize) * .5f; center.style.top = (diameter - centerSize) * .5f;
+        center.style.justifyContent = Justify.Center; center.style.alignItems = Align.Center;
+        center.style.backgroundColor = new Color(.13f,.17f,.29f,.98f);
+        center.style.borderTopLeftRadius = centerSize * .5f; center.style.borderTopRightRadius = centerSize * .5f;
+        center.style.borderBottomLeftRadius = centerSize * .5f; center.style.borderBottomRightRadius = centerSize * .5f;
+        center.style.borderTopWidth = 3; center.style.borderRightWidth = 3; center.style.borderBottomWidth = 3; center.style.borderLeftWidth = 3;
+        center.style.borderTopColor = new Color(.42f,.58f,.95f); center.style.borderRightColor = new Color(.42f,.58f,.95f);
+        center.style.borderBottomColor = new Color(.42f,.58f,.95f); center.style.borderLeftColor = new Color(.42f,.58f,.95f);
+        center.pickingMode = PickingMode.Ignore;
+        string centerTitle = moveMenu ? "移動先" : (IsAlive(menuTarget) ? menuTarget.DisplayName : "対象");
+        center.Add(MakeLabel(moveMenu ? "⌖" : "●", 25, true));
+        var centerName = MakeLabel(centerTitle, Mathf.Clamp(Mathf.RoundToInt(diameter * .033f), 12, 18), true);
+        centerName.style.unityTextAlign = TextAnchor.MiddleCenter;
+        centerName.style.whiteSpace = WhiteSpace.Normal;
+        center.Add(centerName);
+        center.Add(MakeLabel(moveMenu ? "地点を選択" : "行動を選択", 10, false));
+        menu.Add(center);
+
         if (moveMenu)
         {
-            var moveButton = MakeButton("ここに移動");
-            moveButton.clicked += () => { menuOpen = false; RefreshUI(); executor.RequestMove(moveDestination); };
-            menu.Add(moveButton);
+            AddPieButton(menu, "ここに移動", 1, 0, diameter, () =>
+            { menuOpen = false; RefreshUI(); executor.RequestMove(moveDestination); });
         }
         else if (IsAlive(menuTarget))
         {
             var context = new InteractionContext(player, menuTarget);
             var choices = menuTarget.GetAvailableInteractions(context);
-            foreach (var definition in choices)
+            for (int i = 0; i < choices.Count; i++)
             {
+                var definition = choices[i];
                 if (definition == null) continue;
                 var selectedDefinition = definition;
-                var actionButton = MakeButton(selectedDefinition.DisplayName + "   ·   " + selectedDefinition.Duration.ToString("0.#") + "秒");
-                actionButton.clicked += () =>
+                var selectedTarget = menuTarget;
+                AddPieButton(menu, selectedDefinition.DisplayName, choices.Count, i, diameter, () =>
                 {
-                    var target = menuTarget;
                     menuOpen = false; RefreshUI();
-                    executor.Request(target, selectedDefinition);
-                };
-                menu.Add(actionButton);
+                    executor.Request(selectedTarget, selectedDefinition);
+                });
             }
-            if (choices.Count == 0) menu.Add(MakeLabel("行動がありません", 14, false));
+            if (choices.Count == 0)
+            {
+                var empty = MakeLabel("行動なし", 13, false);
+                empty.style.position = Position.Absolute; empty.style.left = 0; empty.style.right = 0;
+                empty.style.top = diameter - 30; empty.style.unityTextAlign = TextAnchor.MiddleCenter;
+                menu.Add(empty);
+            }
         }
         overlay.Add(menu);
         uiRoot.Add(overlay);
+    }
+
+    float GetPieDiameter()
+    {
+        return Mathf.Clamp(Mathf.Min(Screen.width - 32, Screen.height - 80), 320, 540);
+    }
+
+    void AddPieButton(VisualElement menu, string title, int count, int index, float diameter, System.Action onClicked)
+    {
+        float angle = -90f + index * (360f / Mathf.Max(1, count));
+        float radians = angle * Mathf.Deg2Rad;
+        float center = diameter * .5f;
+        float orbit = diameter * .36f;
+        float buttonWidth = Mathf.Min(diameter * .38f, 198f);
+        const float buttonHeight = 38f;
+        float x = center + Mathf.Cos(radians) * orbit - buttonWidth * .5f;
+        float y = center + Mathf.Sin(radians) * orbit - buttonHeight * .5f;
+        var button = MakeButton(title);
+        button.style.position = Position.Absolute;
+        button.style.left = Mathf.Clamp(x, 0, diameter - buttonWidth);
+        button.style.top = Mathf.Clamp(y, 0, diameter - buttonHeight);
+        button.style.width = buttonWidth;
+        button.style.height = buttonHeight;
+        button.style.paddingLeft = 16; button.style.paddingRight = 16;
+        button.style.backgroundColor = new Color(.18f,.24f,.56f,.98f);
+        button.style.borderTopColor = new Color(.53f,.62f,1f); button.style.borderRightColor = new Color(.53f,.62f,1f);
+        button.style.borderBottomColor = new Color(.06f,.09f,.28f); button.style.borderLeftColor = new Color(.53f,.62f,1f);
+        button.style.borderTopWidth = 1; button.style.borderLeftWidth = 1; button.style.borderRightWidth = 1; button.style.borderBottomWidth = 2;
+        button.style.unityTextAlign = TextAnchor.MiddleCenter;
+        button.clicked += onClicked;
+        button.RegisterCallback<PointerEnterEvent>(_ =>
+        {
+            button.style.backgroundColor = new Color(.03f,.5f,.16f,1f);
+            button.style.borderTopColor = new Color(.35f,1f,.43f);
+            button.style.borderLeftColor = new Color(.35f,1f,.43f);
+            button.style.borderRightColor = new Color(.35f,1f,.43f);
+            button.style.color = new Color(.65f,1f,.68f);
+        });
+        button.RegisterCallback<PointerLeaveEvent>(_ =>
+        {
+            button.style.backgroundColor = new Color(.18f,.24f,.56f,.98f);
+            button.style.borderTopColor = new Color(.53f,.62f,1f);
+            button.style.borderLeftColor = new Color(.53f,.62f,1f);
+            button.style.borderRightColor = new Color(.53f,.62f,1f);
+            button.style.color = Color.white;
+        });
+        menu.Add(button);
     }
 
     static Label MakeLabel(string text, int size, bool bold)
