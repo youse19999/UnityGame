@@ -10,12 +10,30 @@ public sealed class InteractionExecutor : MonoBehaviour, IInteractionExecutor
     Coroutine routine;
     int requestId;
     public InteractionState State { get; private set; } = InteractionState.Idle;
-    public string StatusMessage { get; private set; } = "近くの家具に近づいて E キー";
+    public string StatusMessage { get; private set; } = "家具をクリックして行動、地面をクリックして移動";
     void Awake() { movement = movementBehaviour as IMovementController; }
     public void Configure(Transform actorTransform, MonoBehaviour mover) { actor = actorTransform; movementBehaviour = mover; movement = mover as IMovementController; }
     public void Request(IInteractable target, InteractionDefinition definition)
     {
         Cancel(); int id = ++requestId; routine = StartCoroutine(Run(target, definition, id));
+    }
+    public void RequestMove(Vector3 destination)
+    {
+        Cancel(); int id = ++requestId;
+        destination.y = actor.position.y;
+        routine = StartCoroutine(MoveToPoint(destination, id));
+    }
+    IEnumerator MoveToPoint(Vector3 destination, int id)
+    {
+        if (movement == null) { Fail("移動コントローラーがありません"); yield break; }
+        State = InteractionState.Moving; StatusMessage = "指定した地点へ移動中…";
+        bool arrived = false; bool success = false;
+        movement.MoveTo(destination, value => { success = value; arrived = true; });
+        while (!arrived && id == requestId) yield return null;
+        if (id != requestId) yield break;
+        State = success ? InteractionState.Completed : InteractionState.Failed;
+        StatusMessage = success ? "指定地点に到着しました" : "移動できませんでした";
+        routine = null;
     }
     IEnumerator Run(IInteractable target, InteractionDefinition definition, int id)
     {
