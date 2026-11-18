@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using SimsMock.Interaction;
 
-[RequireComponent(typeof(PanelRenderer))]
+[RequireComponent(typeof(UIDocument))]
 public sealed class InteractionPrototypeController : MonoBehaviour
 {
     [SerializeField] Transform player;
@@ -16,6 +16,7 @@ public sealed class InteractionPrototypeController : MonoBehaviour
     bool menuOpen;
     bool moveMenu;
     Vector3 moveDestination;
+    UIDocument uiDocument;
     VisualElement uiRoot;
     Label selectedLabel;
     Label statusLabel;
@@ -25,12 +26,16 @@ public sealed class InteractionPrototypeController : MonoBehaviour
         scanner = scannerBehaviour as IInteractionScanner;
         executor = executorBehaviour as IInteractionExecutor;
         if (viewCamera == null) viewCamera = Camera.main;
-        GetComponent<PanelRenderer>().RegisterUIReloadCallback(OnUIReload);
+        uiDocument = GetComponent<UIDocument>();
+        if (uiDocument != null) uiRoot = uiDocument.rootVisualElement;
+        BuildUI();
     }
 
-    void OnDestroy()
+    void OnEnable()
     {
-        GetComponent<PanelRenderer>().UnregisterUIReloadCallback(OnUIReload);
+        if (uiDocument == null) uiDocument = GetComponent<UIDocument>();
+        if (uiDocument != null) uiRoot = uiDocument.rootVisualElement;
+        BuildUI();
     }
 
     public void Configure(Transform actor, Camera camera, MonoBehaviour scannerComponent, MonoBehaviour executorComponent)
@@ -42,12 +47,6 @@ public sealed class InteractionPrototypeController : MonoBehaviour
         scanner = scannerComponent as IInteractionScanner;
         executor = executorComponent as IInteractionExecutor;
         RefreshUI();
-    }
-
-    void OnUIReload(PanelRenderer panelRenderer, VisualElement rootElement)
-    {
-        uiRoot = rootElement;
-        BuildUI();
     }
 
     void Update()

@@ -31,7 +31,7 @@ public static class InteractionPrototypeSetup
         var cameraObject = new GameObject("Main Camera"); cameraObject.tag = "MainCamera"; var camera = cameraObject.AddComponent<Camera>(); camera.fieldOfView = 55; cameraObject.AddComponent<AudioListener>(); var follow = cameraObject.AddComponent<FollowCamera>(); follow.Configure(player.transform);
         var panelSettings = GetOrCreatePanelSettings();
         var controllerObject = new GameObject("Interaction Prototype Controller");
-        var panelRenderer = controllerObject.AddComponent<PanelRenderer>(); panelRenderer.panelSettings = panelSettings;
+        var uiDocument = controllerObject.AddComponent<UIDocument>(); uiDocument.panelSettings = panelSettings;
         var ui = controllerObject.AddComponent<InteractionPrototypeController>(); ui.Configure(player.transform, camera, scanner, executor);
         EditorSceneManager.SaveScene(scene, scenePath);
         var scenes = new List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
