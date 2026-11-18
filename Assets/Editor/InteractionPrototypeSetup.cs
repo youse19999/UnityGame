@@ -4,6 +4,7 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UIElements;
 
 public static class InteractionPrototypeSetup
 {
@@ -28,7 +29,10 @@ public static class InteractionPrototypeSetup
         CreateFurniture("Chair", new Vector3(-2, .55f, 1), new Vector3(1,1.1f,1), new Color(.55f,.3f,.18f), new List<InteractionDefinition>{sit});
         CreateFurniture("Workbench", new Vector3(2, .55f, 1), new Vector3(1.6f,1.1f,1), new Color(.65f,.46f,.25f), new List<InteractionDefinition>{work,tidy});
         var cameraObject = new GameObject("Main Camera"); cameraObject.tag = "MainCamera"; var camera = cameraObject.AddComponent<Camera>(); camera.fieldOfView = 55; cameraObject.AddComponent<AudioListener>(); var follow = cameraObject.AddComponent<FollowCamera>(); follow.Configure(player.transform);
-        var controllerObject = new GameObject("Interaction Prototype Controller"); var ui = controllerObject.AddComponent<InteractionPrototypeController>(); ui.Configure(player.transform, camera, scanner, executor);
+        var panelSettings = GetOrCreatePanelSettings();
+        var controllerObject = new GameObject("Interaction Prototype Controller");
+        var panelRenderer = controllerObject.AddComponent<PanelRenderer>(); panelRenderer.panelSettings = panelSettings;
+        var ui = controllerObject.AddComponent<InteractionPrototypeController>(); ui.Configure(player.transform, camera, scanner, executor);
         EditorSceneManager.SaveScene(scene, scenePath);
         var scenes = new List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
         if (!scenes.Exists(s => s.path == scenePath)) scenes.Add(new EditorBuildSettingsScene(scenePath, true));
@@ -36,6 +40,17 @@ public static class InteractionPrototypeSetup
         AssetDatabase.SaveAssets(); AssetDatabase.Refresh();
         Selection.activeObject = AssetDatabase.LoadAssetAtPath<SceneAsset>(scenePath);
         EditorUtility.DisplayDialog("Sims Mock", "InteractionPrototype シーンを作成しました。Play して家具を左クリックし、地面を左クリックして操作を試してください。", "OK");
+    }
+    static PanelSettings GetOrCreatePanelSettings()
+    {
+        const string path = "Assets/ScriptableObjects/Objects/InteractionPrototypePanelSettings.asset";
+        var settings = AssetDatabase.LoadAssetAtPath<PanelSettings>(path);
+        if (settings == null)
+        {
+            settings = ScriptableObject.CreateInstance<PanelSettings>();
+            AssetDatabase.CreateAsset(settings, path);
+        }
+        return settings;
     }
     static InteractionDefinition CreateDefinition(string file, string title, string description, SimsMock.Interaction.InteractionKind kind, float duration, float distance, int value)
     {
