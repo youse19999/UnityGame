@@ -106,11 +106,16 @@ public sealed class InteractionPrototypeController : MonoBehaviour
 
     bool IsPointerOverUI()
     {
-        var pointer = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y);
-        if (new Rect(0, 0, 450, 150).Contains(pointer)) return true;
-        if (!menuOpen) return false;
-        float diameter = GetPieDiameter();
-        return new Rect((Screen.width - diameter) * .5f, (Screen.height - diameter) * .5f, diameter, diameter).Contains(pointer);
+        var hudPointer = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y);
+        if (new Rect(0, 0, 450, 150).Contains(hudPointer)) return true;
+        if (uiRoot == null || uiRoot.panel == null) return false;
+
+        Vector2 panelPointer = RuntimePanelUtils.ScreenToPanel(uiRoot.panel, Input.mousePosition);
+        for (VisualElement picked = uiRoot.panel.Pick(panelPointer); picked != null; picked = picked.parent)
+        {
+            if (picked is Button) return true;
+        }
+        return false;
     }
 
     void RefreshUI()
