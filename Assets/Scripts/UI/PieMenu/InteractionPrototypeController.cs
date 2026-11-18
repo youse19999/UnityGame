@@ -153,12 +153,12 @@ public sealed class InteractionPrototypeController : MonoBehaviour
         overlay.style.left = 0; overlay.style.top = 0; overlay.style.right = 0; overlay.style.bottom = 0;
         overlay.style.justifyContent = Justify.Center;
         overlay.style.alignItems = Align.Center;
-        overlay.pickingMode = PickingMode.Ignore;
+        overlay.pickingMode = PickingMode.Position;
         var menu = new VisualElement();
         float diameter = GetPieDiameter();
         menu.style.position = Position.Relative;
         menu.style.width = diameter; menu.style.height = diameter;
-        menu.pickingMode = PickingMode.Ignore;
+        menu.pickingMode = PickingMode.Position;
 
         var ring = new VisualElement();
         float ringDiameter = diameter * .78f;
@@ -244,6 +244,7 @@ public sealed class InteractionPrototypeController : MonoBehaviour
         float x = center + Mathf.Cos(radians) * orbit - buttonWidth * .5f;
         float y = center + Mathf.Sin(radians) * orbit - buttonHeight * .5f;
         var button = MakeButton(title);
+        button.pickingMode = PickingMode.Position;
         button.style.position = Position.Absolute;
         button.style.left = Mathf.Clamp(x, 0, diameter - buttonWidth);
         button.style.top = Mathf.Clamp(y, 0, diameter - buttonHeight);
